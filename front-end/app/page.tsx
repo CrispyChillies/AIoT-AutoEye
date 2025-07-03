@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Camera, Car, Bike, TrendingUp, CalendarIcon, RefreshCw, ArrowRight, ArrowLeft } from "lucide-react"
 import { format } from "date-fns"
+import CameraComponent  from "./CameraComponent"
 
 // Mock data for demonstration
 const mockTrafficData = {
@@ -88,11 +89,14 @@ export default function TrafficDashboard() {
           </CardHeader>
           <CardContent>
             <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">
-              <img
+              {/* <img
                 src="/placeholder.svg?height=400&width=800"
                 alt="Live traffic camera feed"
                 className="w-full h-full object-cover"
-              />
+              /> */}
+              <CameraComponent>
+
+              </CameraComponent>
               <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
                 Camera 01 - Main Street
               </div>
