@@ -1,95 +1,188 @@
-# AutoEye Backend API
+# Save the README markdown content into a file
 
-Flask application for managing users and traffic data.
+markdown_content = """
+# 🚦 AutoEye API - Flask + MongoDB CRUD
 
-## Setup
+This project provides a simple RESTful API for managing **user data** and **traffic monitoring data**, built using **Flask** and **MongoDB**.
 
-1. Install dependencies:
+---
+
+## 📦 Features
+
+- MongoDB-based CRUD operations
+- Two collections:
+  - `/users`: Manage user information
+  - `/traffic`: Store traffic monitoring data
+- Health check endpoint (`/health`)
+- Error handling and validation
+- Environment configuration via `.env`
+
+---
+
+## ⚙️ Environment Setup
+
+### 1. Install dependencies
+
 ```bash
-pip install -r requirements.txt
+pip install flask pymongo python-dotenv
 ```
 
-2. Start MongoDB service
+### 2. Setup `.env`
 
-3. Run the application:
+Create a `.env` file:
+
+```env
+MONGO_URI=mongodb://localhost:27017/
+```
+
+---
+
+## 🚀 Running the App
+
 ```bash
 python app.py
 ```
 
-## API Endpoints
+Server runs at: `http://localhost:5000`
 
-### Users
-- `POST /users` - Create a new user
-- `GET /users` - Get all users
-- `GET /users/<user_id>` - Get user by ID
-- `PUT /users/<user_id>` - Update user
-- `DELETE /users/<user_id>` - Delete user
+---
 
-### Traffic Data
-- `POST /traffic` - Create traffic data
-- `GET /traffic` - Get traffic data (supports location and status filters)
-- `GET /traffic/<traffic_id>` - Get traffic data by ID
-- `PUT /traffic/<traffic_id>` - Update traffic data
-- `DELETE /traffic/<traffic_id>` - Delete traffic data
+## 📁 MongoDB Collections
 
-## Example Usage
+- **Database:** `autoeye_db`
+- **Collections:**
+  - `users`
+  - `traffic_data`
 
-Create user:
-```bash
-curl -X POST http://localhost:5000/users -H "Content-Type: application/json" -d '{"_id": "user123", "personal": {"name": "John Doe", "email": "john@example.com"}}'
+---
+
+## 🧑‍💼 `/users` Endpoints
+
+### 🔹 Create a user
+
+**POST** `/users`
+
+```json
+{
+  "_id": "user001",
+  "personal": {
+    "name": "John Doe",
+    "email": "john@example.com"
+  }
+}
 ```
 
-Create traffic data:
-```bash
-curl -X POST http://localhost:5000/traffic -H "Content-Type: application/json" -d '{"_id": "traffic123", "location": "Location A", "vehicle_count": 50, "status": "HEAVY"}'
+- Requires `_id`, `name`, and `email`
+
+---
+
+### 🔹 Get all users
+
+**GET** `/users`
+
+Returns a list of all users.
+
+---
+
+### 🔹 Get user by ID
+
+**GET** `/users/<user_id>`
+
+Returns a single user by ID.
+
+---
+
+### 🔹 Update user
+
+**PUT** `/users/<user_id>`
+
+```json
+{
+  "personal": {
+    "name": "Jane Smith",
+    "email": "jane@example.com"
+  }
+}
 ```
 
-## Testing
+---
 
-### Manual Testing Steps
+### 🔹 Delete user
 
-1. **Start MongoDB** (if using local installation):
-```bash
-mongod
+**DELETE** `/users/<user_id>`
+
+Deletes the user with the given ID.
+
+---
+
+## 🚗 `/traffic` Endpoints
+
+### 🔹 Create traffic data
+
+**POST** `/traffic`
+
+```json
+{
+  "_id": "traffic001",
+  "timestamp": "2024-07-10T10:00:00Z",
+  "location": "District 1",
+  "vehicle_count": 150,
+  "status": "normal"
+}
 ```
 
-2. **Install dependencies**:
-```bash
-pip install -r requirements.txt
+- `_id` is required
+- `timestamp` is optional (defaults to current UTC time)
+
+---
+
+### 🔹 Get traffic data
+
+**GET** `/traffic?location=District%201&status=normal`
+
+- Optional query params: `location`, `status`
+
+---
+
+### 🔹 Get traffic data by ID
+
+**GET** `/traffic/<traffic_id>`
+
+Returns a single traffic record.
+
+---
+
+### 🔹 Update traffic data
+
+**PUT** `/traffic/<traffic_id>`
+
+```json
+{
+  "location": "District 2",
+  "vehicle_count": 120,
+  "status": "heavy"
+}
 ```
 
-3. **Run the Flask application**:
-```bash
-python app.py
-```
+---
 
-4. **Run automated tests** (in another terminal):
-```bash
-python test_app.py
-```
+### 🔹 Delete traffic data
 
-### Manual API Testing with curl
+**DELETE** `/traffic/<traffic_id>`
 
-Test user creation:
-```bash
-curl -X POST http://localhost:5000/users \
-  -H "Content-Type: application/json" \
-  -d '{"_id": "user123", "personal": {"name": "John Doe", "email": "john@example.com"}}'
-```
+Deletes the traffic record with the given ID.
 
-Test traffic data creation:
-```bash
-curl -X POST http://localhost:5000/traffic \
-  -H "Content-Type: application/json" \
-  -d '{"_id": "traffic123", "location": "Location A", "vehicle_count": 50, "status": "HEAVY"}'
-```
+---
 
-Get all users:
-```bash
-curl http://localhost:5000/users
-```
+## ❤️ Health Check
 
-Get traffic data with filters:
-```bash
-curl "http://localhost:5000/traffic?location=Location A&status=HEAVY"
+**GET** `/health`
+
+Returns MongoDB connection status.
+
+```json
+{
+  "status": "healthy",
+  "database": "connected"
+}
 ```
