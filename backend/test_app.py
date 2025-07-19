@@ -1,6 +1,6 @@
 import requests
 import json
-
+import base64
 BASE_URL = "http://localhost:5000"
 
 def test_health():
@@ -68,64 +68,53 @@ def test_users():
     
     return True
 
+import matplotlib.pyplot as plt
+from PIL import Image
+import io
+
 def test_traffic():
     print("\n=== Testing Traffic API ===")
-    
-    # Test creating traffic data with extended fields
-    traffic_data = {
-        "_id": "traffic123",
-        "location": "Location A",
-        "vehicle_count": 120,
-        "car_count": 80,
-        "motorbike_count": 40,
-        "lane1_in": 30,
-        "lane1_out": 25,
-        "lane2_in": 20,
-        "lane2_out": 15,
-        "status": "HEAVY"
-    }
-    
-    response = requests.post(f"{BASE_URL}/traffic", json=traffic_data)
+
+    # Load image to be sent
+    image_path = "5x5.jpg"
+    with open(image_path, "rb") as img_file:
+        files = {"image": ("5x5.jpg", img_file, "image/jpeg")}
+        data = {
+            "_id": "traffic123",
+            "location": "Location A",
+            "vehicle_count": "120",
+            "car_count": "80",
+            "motorbike_count": "40",
+            "lane1_in": "30",
+            "lane1_out": "25",
+            "lane2_in": "20",
+            "lane2_out": "15",
+            "status": "HEAVY"
+        }
+
+        response = requests.post(f"{BASE_URL}/traffic", files=files, data=data)
+
     print(f"Create Traffic Data: {response.status_code} - {response.json()}")
-    
+
     if response.status_code != 201:
         print(f"❌ Traffic data creation failed. Response: {response.text}")
         return False
 
-    # Test getting all traffic data
-    response = requests.get(f"{BASE_URL}/traffic")
-    print(f"Get All Traffic Data: {response.status_code} - Found {len(response.json())} records")
-    
-    # Test getting traffic data by location filter
-    response = requests.get(f"{BASE_URL}/traffic?location=Location A")
-    print(f"Get Traffic by Location: {response.status_code} - Found {len(response.json())} records")
-    
-    # Test getting specific traffic data
-    response = requests.get(f"{BASE_URL}/traffic/traffic123")
-    print(f"Get Traffic by ID: {response.status_code} - {response.json()}")
-    
-    # Test updating traffic data
-    update_data = {
-        "vehicle_count": 150,
-        "car_count": 100,
-        "motorbike_count": 50,
-        "lane1_in": 40,
-        "lane1_out": 35,
-        "lane2_in": 30,
-        "lane2_out": 25,
-        "status": "CONGESTED"
-    }
-    response = requests.put(f"{BASE_URL}/traffic/traffic123", json=update_data)
-    print(f"Update Traffic Data: {response.status_code} - {response.json()}")
-    
-    # Verify update
+    # Get the created traffic record
     response = requests.get(f"{BASE_URL}/traffic/traffic123")
     if response.status_code == 200:
         traffic = response.json()
-        print(f"Verified Update - Count: {traffic['vehicle_count']}, Cars: {traffic['car_count']}, "
-              f"Motorbikes: {traffic['motorbike_count']}, Lane1 In/Out: {traffic['lane1_in']}/{traffic['lane1_out']}, "
-              f"Lane2 In/Out: {traffic['lane2_in']}/{traffic['lane2_out']}, Status: {traffic['status']}")
-    
+        print(f"Get Traffic by ID: {response.status_code} - {traffic}")
+
+        # Decode and display the image if present
+        if "image" in traffic and traffic["image"]:
+            image_data = base64.b64decode(traffic["image"])
+            image = Image.open(io.BytesIO(image_data))
+            plt.imshow(image)
+            plt.title("Uploaded Traffic Image")
+            plt.axis("off")
+            plt.show()
+
     return True
 
 

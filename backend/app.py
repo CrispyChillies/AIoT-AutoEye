@@ -3,6 +3,8 @@ from flask_cors import CORS  # Add this import
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError, ConnectionFailure
 from bson import ObjectId
+from werkzeug.utils import secure_filename
+import base64
 from datetime import datetime
 import os
 from dotenv import load_dotenv
@@ -125,43 +127,58 @@ def create_traffic_data():
         if not client:
             return jsonify({"error": "Database connection not available"}), 500
 
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
+        if request.is_json:
+            data = request.get_json()
+            _id = data.get("_id")
+            if not _id:
+                return jsonify({"error": "_id is required"}), 400
 
-        # Validate required field _id
-        if not data.get("_id"):
-            return jsonify({"error": "_id is required"}), 400
+            traffic_doc = {
+                "_id": _id,
+                "timestamp": data.get("timestamp", datetime.utcnow().isoformat() + "Z"),
+                "location": data.get("location"),
+                "vehicle_count": int(data.get("vehicle_count", 0)),
+                "car_count": int(data.get("car_count", 0)),
+                "motorbike_count": int(data.get("motorbike_count", 0)),
+                "lane1_in": int(data.get("lane1_in", 0)),
+                "lane1_out": int(data.get("lane1_out", 0)),
+                "lane2_in": int(data.get("lane2_in", 0)),
+                "lane2_out": int(data.get("lane2_out", 0)),
+                "status": data.get("status"),
+                "image": data.get("image"),  # optional
+            }
 
-        # Optional: validate numeric fields
-        numeric_fields = ["vehicle_count", "car_count", "motorbike_count", 
-                          "lane1_in", "lane1_out", "lane2_in", "lane2_out"]
-        for field in numeric_fields:
-            if field in data and not isinstance(data[field], int):
-                return jsonify({"error": f"{field} must be an integer"}), 400
+        else:
+            # Handle form data (current implementation)
+            _id = request.form.get("_id")
+            if not _id:
+                return jsonify({"error": "_id is required"}), 400
 
-        traffic_doc = {
-            "_id": data["_id"],
-            "timestamp": data.get("timestamp", datetime.utcnow().isoformat() + "Z"),
-            "location": data.get("location"),
-            "vehicle_count": data.get("vehicle_count", 0),
-            "car_count": data.get("car_count", 0),
-            "motorbike_count": data.get("motorbike_count", 0),
-            "lane1_in": data.get("lane1_in", 0),
-            "lane1_out": data.get("lane1_out", 0),
-            "lane2_in": data.get("lane2_in", 0),
-            "lane2_out": data.get("lane2_out", 0),
-            "status": data.get("status"),
-        }
+            image_file = request.files.get("image")
+            image_data = None
+            if image_file:
+                image_data = base64.b64encode(image_file.read()).decode("utf-8")
+
+            traffic_doc = {
+                "_id": _id,
+                "timestamp": request.form.get("timestamp", datetime.utcnow().isoformat() + "Z"),
+                "location": request.form.get("location"),
+                "vehicle_count": int(request.form.get("vehicle_count", 0)),
+                "car_count": int(request.form.get("car_count", 0)),
+                "motorbike_count": int(request.form.get("motorbike_count", 0)),
+                "lane1_in": int(request.form.get("lane1_in", 0)),
+                "lane1_out": int(request.form.get("lane1_out", 0)),
+                "lane2_in": int(request.form.get("lane2_in", 0)),
+                "lane2_out": int(request.form.get("lane2_out", 0)),
+                "status": request.form.get("status"),
+                "image": image_data,
+            }
 
         result = traffic_collection.insert_one(traffic_doc)
-        return (
-            jsonify({"message": "Traffic data created", "id": str(result.inserted_id)}),
-            201,
-        )
+        return jsonify({"message": "Traffic data created", "id": str(result.inserted_id)}), 201
 
     except DuplicateKeyError:
-        return jsonify({"error": f"Traffic data with id '{data.get('_id')}' already exists"}), 409
+        return jsonify({"error": f"Traffic data with id '{_id}' already exists"}), 409
     except Exception as e:
         print(f"Error creating traffic data: {str(e)}")
         return jsonify({"error": str(e)}), 400
