@@ -71,22 +71,27 @@ def test_users():
 def test_traffic():
     print("\n=== Testing Traffic API ===")
     
-    # Test creating traffic data
+    # Test creating traffic data with extended fields
     traffic_data = {
         "_id": "traffic123",
         "location": "Location A",
-        "vehicle_count": 50,
+        "vehicle_count": 120,
+        "car_count": 80,
+        "motorbike_count": 40,
+        "lane1_in": 30,
+        "lane1_out": 25,
+        "lane2_in": 20,
+        "lane2_out": 15,
         "status": "HEAVY"
     }
     
     response = requests.post(f"{BASE_URL}/traffic", json=traffic_data)
     print(f"Create Traffic Data: {response.status_code} - {response.json()}")
     
-    # If creation failed, show the error details
     if response.status_code != 201:
         print(f"❌ Traffic data creation failed. Response: {response.text}")
         return False
-    
+
     # Test getting all traffic data
     response = requests.get(f"{BASE_URL}/traffic")
     print(f"Get All Traffic Data: {response.status_code} - Found {len(response.json())} records")
@@ -101,7 +106,13 @@ def test_traffic():
     
     # Test updating traffic data
     update_data = {
-        "vehicle_count": 75,
+        "vehicle_count": 150,
+        "car_count": 100,
+        "motorbike_count": 50,
+        "lane1_in": 40,
+        "lane1_out": 35,
+        "lane2_in": 30,
+        "lane2_out": 25,
         "status": "CONGESTED"
     }
     response = requests.put(f"{BASE_URL}/traffic/traffic123", json=update_data)
@@ -111,9 +122,12 @@ def test_traffic():
     response = requests.get(f"{BASE_URL}/traffic/traffic123")
     if response.status_code == 200:
         traffic = response.json()
-        print(f"Verified Update - Count: {traffic['vehicle_count']}, Status: {traffic['status']}")
+        print(f"Verified Update - Count: {traffic['vehicle_count']}, Cars: {traffic['car_count']}, "
+              f"Motorbikes: {traffic['motorbike_count']}, Lane1 In/Out: {traffic['lane1_in']}/{traffic['lane1_out']}, "
+              f"Lane2 In/Out: {traffic['lane2_in']}/{traffic['lane2_out']}, Status: {traffic['status']}")
     
     return True
+
 
 def test_error_cases():
     print("\n=== Testing Error Cases ===")

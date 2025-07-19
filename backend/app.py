@@ -129,15 +129,28 @@ def create_traffic_data():
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
 
-        # Validate required fields
+        # Validate required field _id
         if not data.get("_id"):
             return jsonify({"error": "_id is required"}), 400
 
+        # Optional: validate numeric fields
+        numeric_fields = ["vehicle_count", "car_count", "motorbike_count", 
+                          "lane1_in", "lane1_out", "lane2_in", "lane2_out"]
+        for field in numeric_fields:
+            if field in data and not isinstance(data[field], int):
+                return jsonify({"error": f"{field} must be an integer"}), 400
+
         traffic_doc = {
-            "_id": data.get("_id"),
+            "_id": data["_id"],
             "timestamp": data.get("timestamp", datetime.utcnow().isoformat() + "Z"),
             "location": data.get("location"),
-            "vehicle_count": data.get("vehicle_count"),
+            "vehicle_count": data.get("vehicle_count", 0),
+            "car_count": data.get("car_count", 0),
+            "motorbike_count": data.get("motorbike_count", 0),
+            "lane1_in": data.get("lane1_in", 0),
+            "lane1_out": data.get("lane1_out", 0),
+            "lane2_in": data.get("lane2_in", 0),
+            "lane2_out": data.get("lane2_out", 0),
             "status": data.get("status"),
         }
 
@@ -148,7 +161,7 @@ def create_traffic_data():
         )
 
     except DuplicateKeyError:
-        return jsonify({"error": f"Traffic data with id '{data.get('_id')}' already exists"}), 409  # type: ignore
+        return jsonify({"error": f"Traffic data with id '{data.get('_id')}' already exists"}), 409
     except Exception as e:
         print(f"Error creating traffic data: {str(e)}")
         return jsonify({"error": str(e)}), 400
@@ -187,17 +200,32 @@ def get_traffic_by_id(traffic_id):
 def update_traffic_data(traffic_id):
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
         update_doc = {}
-        for field in ["location", "vehicle_count", "status"]:
+        updatable_fields = [
+            "location", "vehicle_count", "status",
+            "car_count", "motorbike_count",
+            "lane1_in", "lane1_out",
+            "lane2_in", "lane2_out"
+        ]
+
+        for field in updatable_fields:
             if field in data:
                 update_doc[field] = data[field]
+
+        if not update_doc:
+            return jsonify({"error": "No valid fields to update"}), 400
 
         result = traffic_collection.update_one(
             {"_id": traffic_id}, {"$set": update_doc}
         )
+
         if result.matched_count:
             return jsonify({"message": "Traffic data updated"}), 200
         return jsonify({"error": "Traffic data not found"}), 404
+
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
