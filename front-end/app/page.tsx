@@ -141,19 +141,60 @@ export default function TrafficDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Camera className="w-5 h-5" />
-              Live Camera Feed
+              Latest Camera Snapshot - {latestTraffic?.location || "No Location"}
             </CardTitle>
+            <div className="text-sm text-gray-500">
+              {latestTraffic ? (
+                <>
+                  Last captured: {new Date(latestTraffic.timestamp).toLocaleString()} • 
+                  Status: <span className="font-medium">{latestTraffic.status}</span>
+                </>
+              ) : (
+                "No recent captures available"
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">
-              <CameraComponent />
+              {/* PASS THE TRAFFIC DATA TO CAMERA COMPONENT */}
+              <CameraComponent 
+                latestTraffic={latestTraffic}
+                onRefresh={() => {
+                  refresh();
+                  refreshHealth();
+                }}
+              />
+              
+              {/* Info overlays */}
               <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
-                Camera 01 - Main Street
+                📷 {latestTraffic?.location || "Camera 01"}
               </div>
-              <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                LIVE
-              </div>
+              
+              {latestTraffic && (
+                <div className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                  {new Date(latestTraffic.timestamp).toLocaleTimeString()}
+                </div>
+              )}
+              
+              {latestTraffic && (
+                <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-2 rounded text-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1">
+                      <Car className="w-4 h-4" />
+                      <span>{currentStats.cars}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Bike className="w-4 h-4" />
+                      <span>{currentStats.motorbikes}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <TrendingUp className="w-4 h-4" />
+                      <span>{currentStats.totalVehicles} total</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

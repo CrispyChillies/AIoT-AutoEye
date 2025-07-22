@@ -121,73 +121,193 @@ def delete_user(user_id):
         return jsonify({"error": str(e)}), 400
 
 
-# Traffic data endpoints
 @app.route("/traffic", methods=["POST"])
 def create_traffic_data():
     try:
         if not client:
             return jsonify({"error": "Database connection not available"}), 500
 
+        _id = None
+        traffic_doc = {}
+
         if request.is_json:
             data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+
             _id = data.get("_id")
             if not _id:
-                return jsonify({"error": "_id is required"}), 400
+                # Auto-generate ID if not provided
+                _id = f"traffic_{datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')[:-3]}"
+
+            # Validate base64 image if provided
+            image_data = data.get("image")
+            if image_data:
+                try:
+                    base64.b64decode(image_data)
+                    print(f"✅ Valid base64 image provided, length: {len(image_data)}")
+                except Exception as e:
+                    print(f"❌ Invalid base64 image: {str(e)}")
+                    return jsonify({"error": "Invalid base64 image format"}), 400
 
             traffic_doc = {
                 "_id": _id,
                 "timestamp": data.get("timestamp", datetime.utcnow().isoformat() + "Z"),
-                "location": data.get("location"),
+                "location": data.get("location", "Unknown Location"),
                 "vehicle_count": int(data.get("vehicle_count", 0)),
-                "car_count": int(data.get("car_count", 0)),
-                "motorbike_count": int(data.get("motorbike_count", 0)),
-                "lane1_in": int(data.get("lane1_in", 0)),
-                "lane1_out": int(data.get("lane1_out", 0)),
-                "lane2_in": int(data.get("lane2_in", 0)),
-                "lane2_out": int(data.get("lane2_out", 0)),
-                "status": data.get("status"),
-                "image": data.get("image"),  # optional
+                "car_count": (
+                    int(data.get("car_count"))
+                    if data.get("car_count") is not None
+                    else None
+                ),
+                "motorbike_count": (
+                    int(data.get("motorbike_count"))
+                    if data.get("motorbike_count") is not None
+                    else None
+                ),
+                "lane1_in": (
+                    int(data.get("lane1_in"))
+                    if data.get("lane1_in") is not None
+                    else None
+                ),
+                "lane1_out": (
+                    int(data.get("lane1_out"))
+                    if data.get("lane1_out") is not None
+                    else None
+                ),
+                "lane2_in": (
+                    int(data.get("lane2_in"))
+                    if data.get("lane2_in") is not None
+                    else None
+                ),
+                "lane2_out": (
+                    int(data.get("lane2_out"))
+                    if data.get("lane2_out") is not None
+                    else None
+                ),
+                "status": data.get("status", "unknown"),
+                "image": image_data,
             }
 
         else:
-            # Handle form data (current implementation)
+            # Handle multipart form data (file upload)
             _id = request.form.get("_id")
             if not _id:
-                return jsonify({"error": "_id is required"}), 400
+                # Auto-generate ID if not provided
+                _id = f"traffic_{datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')[:-3]}"
 
+            # Handle image file upload and convert to base64
             image_file = request.files.get("image")
             image_data = None
-            if image_file:
-                image_data = base64.b64encode(image_file.read()).decode("utf-8")
+            if image_file and image_file.filename:
+                try:
+                    # Validate file type
+                    allowed_extensions = {"png", "jpg", "jpeg", "gif", "bmp", "webp"}
+                    file_extension = (
+                        image_file.filename.rsplit(".", 1)[1].lower()
+                        if "." in image_file.filename
+                        else ""
+                    )
+
+                    if file_extension not in allowed_extensions:
+                        return (
+                            jsonify(
+                                {
+                                    "error": f"Unsupported file type. Allowed: {', '.join(allowed_extensions)}"
+                                }
+                            ),
+                            400,
+                        )
+
+                    # Convert to base64
+                    image_data = base64.b64encode(image_file.read()).decode("utf-8")
+                    print(
+                        f"📸 Image uploaded and converted: {image_file.filename}, size: {len(image_data)} chars"
+                    )
+
+                except Exception as e:
+                    print(f"❌ Error processing image file: {str(e)}")
+                    return jsonify({"error": f"Failed to process image: {str(e)}"}), 400
+
+            # Helper function to safely convert to int
+            def safe_int(value):
+                if value is None or value == "":
+                    return None
+                try:
+                    return int(value)
+                except (ValueError, TypeError):
+                    return None
 
             traffic_doc = {
                 "_id": _id,
                 "timestamp": request.form.get(
                     "timestamp", datetime.utcnow().isoformat() + "Z"
                 ),
-                "location": request.form.get("location"),
-                "vehicle_count": int(request.form.get("vehicle_count", 0)),
-                "car_count": int(request.form.get("car_count", 0)),
-                "motorbike_count": int(request.form.get("motorbike_count", 0)),
-                "lane1_in": int(request.form.get("lane1_in", 0)),
-                "lane1_out": int(request.form.get("lane1_out", 0)),
-                "lane2_in": int(request.form.get("lane2_in", 0)),
-                "lane2_out": int(request.form.get("lane2_out", 0)),
-                "status": request.form.get("status"),
+                "location": request.form.get("location", "Unknown Location"),
+                "vehicle_count": safe_int(request.form.get("vehicle_count")) or 0,
+                "car_count": safe_int(request.form.get("car_count")),
+                "motorbike_count": safe_int(request.form.get("motorbike_count")),
+                "lane1_in": safe_int(request.form.get("lane1_in")),
+                "lane1_out": safe_int(request.form.get("lane1_out")),
+                "lane2_in": safe_int(request.form.get("lane2_in")),
+                "lane2_out": safe_int(request.form.get("lane2_out")),
+                "status": request.form.get("status", "unknown"),
                 "image": image_data,
             }
 
+        # Validate required fields
+        if not traffic_doc["location"] or traffic_doc["location"] == "Unknown Location":
+            if not request.form.get("location") and not (
+                request.is_json and request.get_json().get("location")
+            ):
+                print("⚠️ Warning: No location provided, using 'Unknown Location'")
+
+        if traffic_doc["vehicle_count"] < 0:
+            return jsonify({"error": "vehicle_count must be >= 0"}), 400
+
+        # Validate status
+        valid_statuses = ["light", "moderate", "heavy", "unknown"]
+        if traffic_doc["status"] not in valid_statuses:
+            print(
+                f"⚠️ Warning: Invalid status '{traffic_doc['status']}', using 'unknown'"
+            )
+            traffic_doc["status"] = "unknown"
+
+        # Remove None values to keep the document clean
+        traffic_doc = {k: v for k, v in traffic_doc.items() if v is not None}
+
+        # Insert to database
         result = traffic_collection.insert_one(traffic_doc)
+        print(f"✅ Traffic data inserted: {result.inserted_id}")
+
+        # Return the created document with additional info
+        created_doc = traffic_collection.find_one({"_id": result.inserted_id})
+
         return (
-            jsonify({"message": "Traffic data created", "id": str(result.inserted_id)}),
+            jsonify(
+                {
+                    "message": "Traffic data created successfully",
+                    "id": str(result.inserted_id),
+                    "data": serialize_doc(created_doc),
+                    "has_image": bool(traffic_doc.get("image")),
+                    "auto_generated_id": _id
+                    != (
+                        request.form.get("_id")
+                        if not request.is_json
+                        else request.get_json().get("_id")
+                    ),
+                }
+            ),
             201,
         )
 
     except DuplicateKeyError:
         return jsonify({"error": f"Traffic data with id '{_id}' already exists"}), 409
+    except ValueError as e:
+        return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
     except Exception as e:
-        print(f"Error creating traffic data: {str(e)}")
-        return jsonify({"error": str(e)}), 400
+        print(f"❌ Error creating traffic data: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/traffic", methods=["GET"])
