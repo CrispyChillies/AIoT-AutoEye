@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 # MongoDB connection
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
@@ -161,7 +162,9 @@ def create_traffic_data():
 
             traffic_doc = {
                 "_id": _id,
-                "timestamp": request.form.get("timestamp", datetime.utcnow().isoformat() + "Z"),
+                "timestamp": request.form.get(
+                    "timestamp", datetime.utcnow().isoformat() + "Z"
+                ),
                 "location": request.form.get("location"),
                 "vehicle_count": int(request.form.get("vehicle_count", 0)),
                 "car_count": int(request.form.get("car_count", 0)),
@@ -175,7 +178,10 @@ def create_traffic_data():
             }
 
         result = traffic_collection.insert_one(traffic_doc)
-        return jsonify({"message": "Traffic data created", "id": str(result.inserted_id)}), 201
+        return (
+            jsonify({"message": "Traffic data created", "id": str(result.inserted_id)}),
+            201,
+        )
 
     except DuplicateKeyError:
         return jsonify({"error": f"Traffic data with id '{_id}' already exists"}), 409
@@ -222,10 +228,15 @@ def update_traffic_data(traffic_id):
 
         update_doc = {}
         updatable_fields = [
-            "location", "vehicle_count", "status",
-            "car_count", "motorbike_count",
-            "lane1_in", "lane1_out",
-            "lane2_in", "lane2_out"
+            "location",
+            "vehicle_count",
+            "status",
+            "car_count",
+            "motorbike_count",
+            "lane1_in",
+            "lane1_out",
+            "lane2_in",
+            "lane2_out",
         ]
 
         for field in updatable_fields:

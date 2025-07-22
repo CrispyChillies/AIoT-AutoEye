@@ -1,5 +1,7 @@
 "use client"
 
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,33 +10,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar } from "@/components/ui/calendar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Camera, Car, Bike, TrendingUp, CalendarIcon, RefreshCw, ArrowRight, ArrowLeft } from "lucide-react"
-import { format } from "date-fns"
-import CameraComponent  from "./CameraComponent"
+import { Camera, Car, Bike, TrendingUp, CalendarIcon, RefreshCw, ArrowRight, ArrowLeft, ArrowUp, ArrowDown } from "lucide-react"
 
-// Mock data for demonstration
-const mockTrafficData = {
-  current: {
-    totalVehicles: 47,
-    cars: 32,
-    motorbikes: 15,
-    inbound: 28,
-    outbound: 19,
-    status: "moderate",
-    lastUpdate: new Date(),
-  },
-  historical: [
-    { time: "08:00", cars: 45, motorbikes: 23, total: 68, status: "heavy" },
-    { time: "09:00", cars: 38, motorbikes: 18, total: 56, status: "moderate" },
-    { time: "10:00", cars: 25, motorbikes: 12, total: 37, status: "light" },
-    { time: "11:00", cars: 32, motorbikes: 15, total: 47, status: "moderate" },
-  ],
-}
+import { format } from "date-fns"
+import CameraComponent from "./CameraComponent"
+
+
+
+// Import your API hooks instead of using mock data
+import { useTrafficData, useHealth } from "@/lib/hooks/useSimpleTraffic"
 
 export default function TrafficDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [selectedHour, setSelectedHour] = useState<string>("11")
-  const [isLive, setIsLive] = useState(true)
+
+  // Use real data from your API
+  const { data: trafficData, loading, error, refresh } = useTrafficData()
+  const { health, isOnline, refresh: refreshHealth } = useHealth()
+
+  // Calculate real stats from API data
+  const latestTraffic = trafficData.length > 0 ? trafficData[0] : null;
+
+  const currentStats = latestTraffic ? {
+    totalVehicles: latestTraffic.vehicle_count,
+    cars: latestTraffic.car_count || Math.floor(latestTraffic.vehicle_count * 0.68),
+    motorbikes: latestTraffic.motorbike_count || Math.floor(latestTraffic.vehicle_count * 0.32),
+    inbound: (latestTraffic.lane1_in || 0),
+    outbound: (latestTraffic.lane1_out || 0),
+    status: latestTraffic.status,
+    location: latestTraffic.location,
+    lastUpdate: new Date(latestTraffic.timestamp),
+  } : {
+    totalVehicles: 0,
+    cars: 0,
+    motorbikes: 0,
+    inbound: 0,
+    outbound: 0,
+    status: "unknown",
+    location: "No data",
+    lastUpdate: new Date(),
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -58,6 +73,30 @@ export default function TrafficDashboard() {
     return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800"
   }
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p>Loading traffic data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button onClick={refresh}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -66,13 +105,31 @@ export default function TrafficDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Edge AI Traffic Monitor</h1>
             <p className="text-gray-600">Real-time traffic monitoring and analytics</p>
+            {/* Show backend status */}
+            {health && (
+              <p className="text-sm text-gray-500">Database: {health.database}</p>
+            )}
+            {/* ADD THIS - Show current location and timestamp */}
+            {latestTraffic && (
+              <div className="text-sm space-y-1">
+                <p className="text-blue-600">📍 Current Location: {latestTraffic.location}</p>
+                <p className="text-green-600">🕒 Last Update: {new Date(latestTraffic.timestamp).toLocaleString()}</p>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <Badge variant="outline" className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isLive ? "bg-green-500" : "bg-gray-400"}`} />
-              {isLive ? "Live" : "Offline"}
+              <div className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-400"}`} />
+              {isOnline ? "Live" : "Offline"}
             </Badge>
-            <Button onClick={() => setIsLive(!isLive)} variant="outline" size="sm">
+            <Button 
+              onClick={() => {
+                refresh()
+                refreshHealth()
+              }} 
+              variant="outline" 
+              size="sm"
+            >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
@@ -89,14 +146,7 @@ export default function TrafficDashboard() {
           </CardHeader>
           <CardContent>
             <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">
-              {/* <img
-                src="/placeholder.svg?height=400&width=800"
-                alt="Live traffic camera feed"
-                className="w-full h-full object-cover"
-              /> */}
-              <CameraComponent>
-
-              </CameraComponent>
+              <CameraComponent />
               <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
                 Camera 01 - Main Street
               </div>
@@ -108,19 +158,19 @@ export default function TrafficDashboard() {
           </CardContent>
         </Card>
 
-        {/* Current Traffic Status */}
+        {/* Current Traffic Status - Using REAL DATA */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Vehicles</p>
-                  <p className="text-3xl font-bold">{mockTrafficData.current.totalVehicles}</p>
+                  <p className="text-3xl font-bold">{currentStats.totalVehicles}</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-blue-600" />
               </div>
-              <Badge className={getStatusBadge(mockTrafficData.current.status)}>
-                {mockTrafficData.current.status.toUpperCase()}
+              <Badge className={getStatusBadge(currentStats.status)}>
+                {currentStats.status.toUpperCase()}
               </Badge>
             </CardContent>
           </Card>
@@ -129,8 +179,8 @@ export default function TrafficDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Cars</p>
-                  <p className="text-3xl font-bold">{mockTrafficData.current.cars}</p>
+                  <p className="text-sm font-medium text-gray-600">Cars (Est.)</p>
+                  <p className="text-3xl font-bold">{currentStats.cars}</p>
                 </div>
                 <Car className="w-8 h-8 text-green-600" />
               </div>
@@ -141,8 +191,8 @@ export default function TrafficDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Motorbikes</p>
-                  <p className="text-3xl font-bold">{mockTrafficData.current.motorbikes}</p>
+                  <p className="text-sm font-medium text-gray-600">Motorbikes (Est.)</p>
+                  <p className="text-3xl font-bold">{currentStats.motorbikes}</p>
                 </div>
                 <Bike className="w-8 h-8 text-orange-600" />
               </div>
@@ -152,19 +202,19 @@ export default function TrafficDashboard() {
           <Card>
             <CardContent className="p-6">
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-600 mb-2">Traffic Flow</p>
+                <p className="text-sm font-medium text-gray-600 mb-2">Traffic Flow (Est.)</p>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <ArrowRight className="w-5 h-5 text-blue-600" />
                     <div>
-                      <p className="text-lg font-bold">{mockTrafficData.current.inbound}</p>
+                      <p className="text-lg font-bold">{currentStats.inbound}</p>
                       <p className="text-xs text-gray-500">Inbound</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <ArrowLeft className="w-5 h-5 text-purple-600" />
                     <div>
-                      <p className="text-lg font-bold">{mockTrafficData.current.outbound}</p>
+                      <p className="text-lg font-bold">{currentStats.outbound}</p>
                       <p className="text-xs text-gray-500">Outbound</p>
                     </div>
                   </div>
@@ -184,7 +234,7 @@ export default function TrafficDashboard() {
           <TabsContent value="history" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Historical Traffic Data</CardTitle>
+                <CardTitle>Real Traffic Data from API</CardTitle>
                 <div className="flex items-center gap-4">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -219,84 +269,175 @@ export default function TrafficDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockTrafficData.historical.map((data, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                  {trafficData.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-4">No traffic data available</p>
+                      <Button onClick={refresh} variant="outline">
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh Data
+                      </Button>
+                    </div>
+                  ) : (
+                  trafficData.map((data) => (
+                    <div key={data._id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
-                        <div className="text-lg font-semibold">{data.time}</div>
-                        <Badge className={getStatusBadge(data.status)}>{data.status.toUpperCase()}</Badge>
+                        <div className="text-lg font-semibold">{data.location}</div>
+                        <Badge className={getStatusBadge(data.status)}>
+                          {data.status.toUpperCase()}
+                        </Badge>
                       </div>
                       <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                          <Car className="w-4 h-4 text-green-600" />
-                          <span>{data.cars}</span>
+                        {/* Separate car and motorbike counts with icons */}
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Car className="w-4 h-4 text-green-600" />
+                            <span className="text-sm">
+                              {data.car_count || Math.floor(data.vehicle_count * 0.68)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Bike className="w-4 h-4 text-orange-600" />
+                            <span className="text-sm">
+                              {data.motorbike_count || Math.floor(data.vehicle_count * 0.32)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <TrendingUp className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-semibold">{data.vehicle_count}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Bike className="w-4 h-4 text-orange-600" />
-                          <span>{data.motorbikes}</span>
+                        <div className="text-sm text-gray-500">
+                          <div>
+                            <div>{new Date(data.timestamp).toLocaleDateString()}</div>
+                            <div className="font-medium">{new Date(data.timestamp).toLocaleTimeString()}</div>
+                          </div>
                         </div>
-                        <div className="font-semibold">Total: {data.total}</div>
                       </div>
                     </div>
-                  ))}
+                  ))
+                )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Traffic Volume Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <p className="text-gray-500">Traffic volume chart would be displayed here</p>
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Traffic Volume Over Time</CardTitle>
+              <p className="text-sm text-gray-600">Total vehicles detected throughout the day</p>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                {trafficData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trafficData.map(item => ({
+                      time: new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                      vehicles: item.vehicle_count,
+                      cars: item.car_count || Math.floor(item.vehicle_count * 0.68),
+                      motorbikes: item.motorbike_count || Math.floor(item.vehicle_count * 0.32),
+                      fullTime: new Date(item.timestamp).toLocaleString()
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="time" 
+                        tick={{ fontSize: 12 }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        labelFormatter={(label: any, payload: any[]) => 
+                          payload?.[0]?.payload?.fullTime || label
+                        }
+                        formatter={(value: any, name: any) => [value, name === 'vehicles' ? 'Total Vehicles' : name === 'cars' ? 'Cars' : 'Motorbikes']}
+                      />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="vehicles" 
+                        stroke="#2563eb" 
+                        strokeWidth={3}
+                        name="Total Vehicles"
+                        dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="cars" 
+                        stroke="#16a34a" 
+                        strokeWidth={2}
+                        name="Cars"
+                        dot={{ fill: '#16a34a', strokeWidth: 2, r: 3 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="motorbikes" 
+                        stroke="#ea580c" 
+                        strokeWidth={2}
+                        name="Motorbikes"
+                        dot={{ fill: '#ea580c', strokeWidth: 2, r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full bg-gray-100 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500">No data available for chart</p>
+                      <Button onClick={refresh} variant="outline" size="sm" className="mt-2">
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Load Data
+                      </Button>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Vehicle Type Distribution</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Car className="w-5 h-5 text-green-600" />
-                        <span>Cars</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div className="bg-green-600 h-2 rounded-full" style={{ width: "68%" }} />
-                        </div>
-                        <span className="text-sm font-medium">68%</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Bike className="w-5 h-5 text-orange-600" />
-                        <span>Motorbikes</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div className="bg-orange-600 h-2 rounded-full" style={{ width: "32%" }} />
-                        </div>
-                        <span className="text-sm font-medium">32%</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+          {/* Traffic Statistics Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                <h3 className="font-semibold">Average Traffic</h3>
+                <p className="text-2xl font-bold text-blue-600">
+                  {trafficData.length > 0 ? Math.round(trafficData.reduce((sum, item) => sum + item.vehicle_count, 0) / trafficData.length) : 0}
+                </p>
+                <p className="text-sm text-gray-500">vehicles per reading</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6 text-center">
+                <ArrowUp className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                <h3 className="font-semibold">Peak Traffic</h3>
+                <p className="text-2xl font-bold text-green-600">
+                  {trafficData.length > 0 ? Math.max(...trafficData.map(item => item.vehicle_count)) : 0}
+                </p>
+                <p className="text-sm text-gray-500">highest reading</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6 text-center">
+                <ArrowDown className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+                <h3 className="font-semibold">Low Traffic</h3>
+                <p className="text-2xl font-bold text-orange-600">
+                  {trafficData.length > 0 ? Math.min(...trafficData.map(item => item.vehicle_count)) : 0}
+                </p>
+                <p className="text-sm text-gray-500">lowest reading</p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
         </Tabs>
 
         {/* Directional Traffic Flow */}
         <Card>
           <CardHeader>
-            <CardTitle>Directional Traffic Flow</CardTitle>
+            <CardTitle>Directional Traffic Flow (Estimated)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -306,15 +447,15 @@ export default function TrafficDashboard() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Cars:</span>
-                    <span className="font-semibold">18</span>
+                    <span className="font-semibold">{currentStats.inbound}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Motorbikes:</span>
-                    <span className="font-semibold">10</span>
+                    <span className="font-semibold">{currentStats.inbound}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span>Total:</span>
-                    <span className="font-bold text-blue-600">28</span>
+                    <span className="font-bold text-blue-600">{currentStats.inbound}</span>
                   </div>
                 </div>
               </div>
@@ -325,15 +466,15 @@ export default function TrafficDashboard() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Cars:</span>
-                    <span className="font-semibold">14</span>
+                    <span className="font-semibold">{currentStats.outbound}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Motorbikes:</span>
-                    <span className="font-semibold">5</span>
+                    <span className="font-semibold">{currentStats.outbound}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span>Total:</span>
-                    <span className="font-bold text-purple-600">19</span>
+                    <span className="font-bold text-purple-600">{currentStats.outbound}</span>
                   </div>
                 </div>
               </div>
