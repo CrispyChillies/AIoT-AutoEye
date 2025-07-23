@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Add this import
-from pymongo import MongoClient
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 from pymongo.errors import DuplicateKeyError, ConnectionFailure
 from bson import ObjectId
 from werkzeug.utils import secure_filename
@@ -18,7 +19,7 @@ CORS(app)
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 print(MONGO_URI)
 try:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
     # Test the connection
     client.admin.command("ping")
     db = client["autoeye_db"]
