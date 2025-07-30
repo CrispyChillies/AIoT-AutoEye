@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import base64
-from database import users_collection, traffic_collection, serialize_doc, client
+import database  # import users_collection, traffic_collection, serialize_doc, client
 from config import ALLOWED_EXTENSIONS, VALID_STATUSES
 from pymongo.errors import DuplicateKeyError
 
@@ -41,7 +41,7 @@ def create_user():
             "personal": {"name": personal["name"], "email": personal["email"]},
         }
 
-        result = users_collection.insert_one(user_doc)
+        result = database.users_collection.insert_one(user_doc)
         return jsonify({"message": "User created", "id": str(result.inserted_id)}), 201
 
     except DuplicateKeyError:
@@ -53,8 +53,8 @@ def create_user():
 @users_bp.route("/users", methods=["GET"])
 def get_users():
     try:
-        users = list(users_collection.find())
-        return jsonify([serialize_doc(user) for user in users]), 200
+        users = list(database.users_collection.find())
+        return jsonify([database.serialize_doc(user) for user in users]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -62,9 +62,9 @@ def get_users():
 @users_bp.route("/users/<user_id>", methods=["GET"])
 def get_user(user_id):
     try:
-        user = users_collection.find_one({"_id": user_id})
+        user = database.users_collection.find_one({"_id": user_id})
         if user:
-            return jsonify(serialize_doc(user)), 200
+            return jsonify(database.serialize_doc(user)), 200
         return jsonify({"error": "User not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -73,7 +73,7 @@ def get_user(user_id):
 @users_bp.route("/users/<user_id>", methods=["DELETE"])
 def delete_user(user_id):
     try:
-        result = users_collection.delete_one({"_id": user_id})
+        result = database.users_collection.delete_one({"_id": user_id})
         if result.deleted_count:
             return jsonify({"message": "User deleted"}), 200
         return jsonify({"error": "User not found"}), 404
@@ -85,7 +85,7 @@ def delete_user(user_id):
 @traffic_bp.route("/traffic", methods=["POST"])
 def create_traffic():
     try:
-        if not client:
+        if not database.client:
             return jsonify({"error": "Database not connected"}), 500
 
         # Handle JSON or form data
@@ -164,14 +164,14 @@ def create_traffic():
         traffic_doc = {k: v for k, v in traffic_doc.items() if v is not None}
 
         # Save to database
-        result = traffic_collection.insert_one(traffic_doc)
-        created_doc = traffic_collection.find_one({"_id": result.inserted_id})
+        result = database.traffic_collection.insert_one(traffic_doc)
+        created_doc = database.traffic_collection.find_one({"_id": result.inserted_id})
 
         return (
             jsonify(
                 {
                     "message": "Traffic data created",
-                    "data": serialize_doc(created_doc),
+                    "data": database.serialize_doc(created_doc),
                     "has_image": bool(traffic_doc.get("image")),
                 }
             ),
@@ -195,8 +195,10 @@ def get_traffic():
             query["status"] = request.args.get("status")
 
         # Get data sorted by latest first
-        traffic_data = list(traffic_collection.find(query).sort("timestamp", -1))
-        return jsonify([serialize_doc(data) for data in traffic_data]), 200
+        traffic_data = list(
+            database.traffic_collection.find(query).sort("timestamp", -1)
+        )
+        return jsonify([database.serialize_doc(data) for data in traffic_data]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -204,9 +206,9 @@ def get_traffic():
 @traffic_bp.route("/traffic/<traffic_id>", methods=["GET"])
 def get_traffic_by_id(traffic_id):
     try:
-        traffic_data = traffic_collection.find_one({"_id": traffic_id})
+        traffic_data = database.traffic_collection.find_one({"_id": traffic_id})
         if traffic_data:
-            return jsonify(serialize_doc(traffic_data)), 200
+            return jsonify(database.serialize_doc(traffic_data)), 200
         return jsonify({"error": "Traffic data not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -215,7 +217,7 @@ def get_traffic_by_id(traffic_id):
 @traffic_bp.route("/traffic/<traffic_id>", methods=["DELETE"])
 def delete_traffic(traffic_id):
     try:
-        result = traffic_collection.delete_one({"_id": traffic_id})
+        result = database.traffic_collection.delete_one({"_id": traffic_id})
         if result.deleted_count:
             return jsonify({"message": "Traffic data deleted"}), 200
         return jsonify({"error": "Traffic data not found"}), 404

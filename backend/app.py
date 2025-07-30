@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from database import connect_db, client
+from database import connect_db
+import database
 from routes import users_bp, traffic_bp
 from config import DEBUG
 from mqtt_handler import mqtt_handler
@@ -11,6 +12,7 @@ CORS(app)
 
 # Connect to database
 connect_db()
+
 
 # Start MQTT client
 mqtt_handler.start()
@@ -24,8 +26,8 @@ app.register_blueprint(traffic_bp)
 @app.route("/health", methods=["GET"])
 def health_check():
     try:
-        if client:
-            client.admin.command("ping")
+        if database.client:
+            database.client.admin.command("ping")
             return jsonify({"status": "healthy", "database": "connected"}), 200
         else:
             return jsonify({"status": "unhealthy", "database": "disconnected"}), 500

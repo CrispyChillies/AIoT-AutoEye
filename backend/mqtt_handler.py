@@ -3,6 +3,7 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 from database import serialize_doc
 import database
+from image_processor import TrafficImageProcessor
 from config import (
     MQTT_BROKER,
     MQTT_PORT,
@@ -21,6 +22,8 @@ class MQTTHandler:
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
         self.is_connected = False
+
+        self.image_processor = TrafficImageProcessor()
 
         # Set credentials if provided
         if MQTT_USERNAME and MQTT_PASSWORD:
@@ -71,7 +74,7 @@ class MQTTHandler:
 
             # Extract data from MQTT message
             frame_id = mqtt_data.get("frame_id", "unknown")
-            timestamp = mqtt_data.get("timestamp", datetime.utcnow().isoformat() + "Z")
+            timestamp = mqtt_data.get("timestamp", datetime.now().isoformat() + "Z")
             location = mqtt_data.get("location", "Edge Device Camera")
             status = mqtt_data.get("status", "unknown")
             image_base64 = mqtt_data.get("image", "")
@@ -80,35 +83,57 @@ class MQTTHandler:
             print(f"📋 Processing frame: {frame_id} from {location}")
             print(f"📦 Found {len(bbox_data)} detected objects")
 
-            # Remove data URL prefix if present
-            if image_base64 and image_base64.startswith("data:image"):
-                image_base64 = image_base64.split(",")[1]
+            # Check for duplicates
+            existing = database.traffic_collection.find_one({"frame_id": frame_id})
+            if existing:
+                print(f"⚠️ Frame {frame_id} already processed, skipping duplicate")
+                return True
 
-            # Count vehicles from bbox data
-            cars_count = 0
-            motorbikes_count = 0
-            lane_in_count = 0
-            lane_out_count = 0
+            # Process image if available
+            processed_image_base64 = None
+            vehicle_counts = None
 
-            for bbox in bbox_data:
-                vehicle_class = bbox.get("class")
-                lane = bbox.get("lane", "unknown")
+            if image_base64 and bbox_data:
+                print("🎨 Processing image with bounding boxes...")
+                processed_image_base64, vehicle_counts = (
+                    self.image_processor.process_traffic_image(
+                        image_base64,
+                        bbox_data,
+                        location=location,
+                        timestamp=timestamp,
+                        add_summary=True,
+                    )
+                )
 
-                # Count by vehicle type
-                if vehicle_class == 0:  # Car
-                    cars_count += 1
-                elif vehicle_class == 1:  # Motorbike
-                    motorbikes_count += 1
+                if processed_image_base64:
+                    print("✅ Image processed successfully")
+                else:
+                    print("⚠️ Image processing failed, using original")
+                    processed_image_base64 = image_base64
+            else:
+                # No image or no bboxes, just count from bbox data
+                vehicle_counts = self.image_processor.count_vehicles(bbox_data)
 
-                # Count by lane direction
-                if lane == "in":
-                    lane_in_count += 1
-                elif lane == "out":
-                    lane_out_count += 1
+            # Extract counts
+            if vehicle_counts:
+                cars_count = vehicle_counts.get("cars_total", 0)
+                motorbikes_count = vehicle_counts.get("motorbikes_total", 0)
+                lane_in_count = vehicle_counts.get("cars_in", 0) + vehicle_counts.get(
+                    "motorbikes_in", 0
+                )
+                lane_out_count = vehicle_counts.get("cars_out", 0) + vehicle_counts.get(
+                    "motorbikes_out", 0
+                )
+                total_vehicles = vehicle_counts.get("total", 0)
+            else:
+                # Fallback to manual counting
+                cars_count = len([b for b in bbox_data if b.get("class") == 0])
+                motorbikes_count = len([b for b in bbox_data if b.get("class") == 1])
+                lane_in_count = len([b for b in bbox_data if b.get("lane") == "in"])
+                lane_out_count = len([b for b in bbox_data if b.get("lane") == "out"])
+                total_vehicles = len(bbox_data)
 
-            total_vehicles = cars_count + motorbikes_count
-
-            # Override status if edge device didn't provide it or it's unknown
+            # Determine status
             if status == "unknown" or not status:
                 if total_vehicles < 5:
                     status = "light"
@@ -117,9 +142,9 @@ class MQTTHandler:
                 else:
                     status = "heavy"
 
-            # Generate traffic document for database
+            # unique_suffix = str(uuid.uuid4())[:8]
             traffic_doc = {
-                "_id": f"edge_{frame_id}_{datetime.now().strftime('%H%M%S')}",
+                "_id": f"edge_{frame_id}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}",
                 "timestamp": timestamp,
                 "location": location,
                 "vehicle_count": total_vehicles,
@@ -127,18 +152,20 @@ class MQTTHandler:
                 "motorbike_count": motorbikes_count,
                 "lane1_in": lane_in_count,
                 "lane1_out": lane_out_count,
-                "lane2_in": 0,  # Not specified in edge data
-                "lane2_out": 0,  # Not specified in edge data
+                "lane2_in": 0,
+                "lane2_out": 0,
                 "status": status,
-                "image": image_base64 if image_base64 else None,
-                # Additional metadata
-                # "source": "edge_device",
-                # "frame_id": frame_id,
-                # "bbox_data": bbox_data,  # Store raw detection data
-                # "detection_count": len(bbox_data),
+                "image": processed_image_base64
+                or image_base64,  # Use processed or original
+                "raw_image": (
+                    image_base64 if processed_image_base64 else None
+                ),  # Store original if processed
+                "bbox_data": bbox_data,
+                "frame_id": frame_id,
+                "source": "mqtt_edge_device",
             }
 
-            # Remove None values to keep document clean
+            # Remove None values
             traffic_doc = {
                 k: v for k, v in traffic_doc.items() if v is not None and v != ""
             }
@@ -153,7 +180,9 @@ class MQTTHandler:
             print(
                 f"🚦 Status: {status}, Lane In={lane_in_count}, Lane Out={lane_out_count}"
             )
-            print(f"📸 Image: {'Yes' if image_base64 else 'No'}")
+            print(
+                f"📸 Image: {'Processed' if processed_image_base64 and image_base64 else 'Original' if image_base64 else 'No'}"
+            )
             print("─" * 50)
 
             return True
