@@ -1,9 +1,12 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import base64
+
+import pymongo
 import database  # import users_collection, traffic_collection, serialize_doc, client
 from config import ALLOWED_EXTENSIONS, VALID_STATUSES
 from pymongo.errors import DuplicateKeyError
+import mqtt_handler
 
 # Create blueprints
 users_bp = Blueprint("users", __name__)
@@ -195,10 +198,16 @@ def get_traffic():
             query["status"] = request.args.get("status")
 
         # Get data sorted by latest first
-        traffic_data = list(
-            database.traffic_collection.find(query).sort("timestamp", -1)
-        )
-        return jsonify([database.serialize_doc(data) for data in traffic_data]), 200
+        if mqtt_handler.mqtt_handler_inst is not None and mqtt_handler.mqtt_handler_inst.is_init() \
+            and mqtt_handler.mqtt_handler_inst.is_connected:
+            traffic_data = [mqtt_handler.mqtt_handler_inst.current_data_mqtt.queue[i] for i in range(mqtt_handler.mqtt_handler_inst.current_data_mqtt.qsize())]
+        
+            return jsonify(traffic_data), 200
+        else:
+            traffic_data = list(
+                database.traffic_collection.find(query).sort("timestamp", pymongo.DESCENDING).limit(10)
+            )
+            return jsonify([database.serialize_doc(data) for data in traffic_data]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 

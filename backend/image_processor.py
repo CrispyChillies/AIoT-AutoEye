@@ -5,6 +5,8 @@ from PIL import Image
 import io
 from datetime import datetime
 
+WIDTH_FACTOR=1230/160
+HEIGHT_FACTOR=691/160
 
 class TrafficImageProcessor:
     """Handle image processing for traffic detection visualization"""
@@ -17,13 +19,13 @@ class TrafficImageProcessor:
         }
 
         # Define labels for classes
-        self.labels = {0: "Car", 1: "Motorbike"}
+        self.labels = {"car": "car", 1: "Motorbike"}
 
         # Font settings
         self.font = cv2.FONT_HERSHEY_SIMPLEX
-        self.font_scale = 0.6
-        self.font_thickness = 2
-        self.box_thickness = 2
+        self.font_scale = 1
+        self.font_thickness = 1
+        self.box_thickness = 1
 
     def decode_base64_image(self, base64_string):
         """Convert base64 string to OpenCV image"""
@@ -82,18 +84,27 @@ class TrafficImageProcessor:
             w = bbox.get("w", 0)
             h = bbox.get("h", 0)
 
+            if x < 0:
+                x = 0
+            if y < 0:
+                y = 0
+
+            w = 40
+            h = 40
+
             # Calculate rectangle coordinates
-            x1, y1 = int(x), int(y)
-            x2, y2 = int(x + w), int(y + h)
+            x1, y1 = int(x*WIDTH_FACTOR-w/2), int(y*HEIGHT_FACTOR-h/2)
+            x2, y2 = int(x*WIDTH_FACTOR+w/2), int(y*HEIGHT_FACTOR+h/2)
 
             # Get color for this class
-            color = self.colors.get(class_id, (255, 255, 255))  # Default white
+            rgb = (np.random.randint(128), np.random.randint(128), np.random.randint(128))
+            color = self.colors.get(class_id, rgb)  # Default white
 
             # Draw rectangle
             cv2.rectangle(result_image, (x1, y1), (x2, y2), color, self.box_thickness)
 
             # Create label text
-            label_text = f"{self.labels.get(class_id, 'Unknown')} ({lane})"
+            label_text = f"{class_id} ({lane})"
 
             # Get text size for background rectangle
             (text_width, text_height), baseline = cv2.getTextSize(
@@ -103,8 +114,8 @@ class TrafficImageProcessor:
             # Draw background rectangle for text
             cv2.rectangle(
                 result_image,
-                (x1, y1 - text_height - 10),
-                (x1 + text_width + 5, y1),
+                (x1, y1 - text_height),
+                (x1 + text_width, y1),
                 color,
                 -1,
             )
@@ -121,6 +132,9 @@ class TrafficImageProcessor:
             )
 
         return result_image
+    
+    def to_original_sample(self, img):
+        return cv2.resize(img, (1230, 691))
 
     def count_vehicles(self, bbox_data):
         """Count vehicles by class and lane"""
@@ -138,13 +152,13 @@ class TrafficImageProcessor:
             class_id = bbox.get("class", -1)
             lane = bbox.get("lane", "unknown")
 
-            if class_id == 0:  # Car
+            if class_id == "car":  # Car
                 counts["cars_total"] += 1
                 if lane == "in":
                     counts["cars_in"] += 1
                 elif lane == "out":
                     counts["cars_out"] += 1
-            elif class_id == 1:  # Motorbike
+            elif class_id == "motorbike":  # Motorbike
                 counts["motorbikes_total"] += 1
                 if lane == "in":
                     counts["motorbikes_in"] += 1
@@ -219,14 +233,17 @@ class TrafficImageProcessor:
                 return None, None
 
             print(f"✅ Image decoded: {image.shape}")
+            resized_image = self.to_original_sample(image)
 
             # Count vehicles
-            counts = self.count_vehicles(bbox_data)
-            print(f"📊 Vehicle counts: {counts}")
-
-            # Draw bounding boxes
-            image_with_boxes = self.draw_bboxes(image, bbox_data)
-            print(f"🎨 Drew {len(bbox_data)} bounding boxes")
+            image_with_boxes = resized_image
+            counts = None
+            if len(bbox_data) > 0:
+                counts = self.count_vehicles(bbox_data)
+                print(f"📊 Vehicle counts: {counts}")
+                # Draw bounding boxes
+                image_with_boxes = self.draw_bboxes(resized_image, bbox_data)
+                print(f"🎨 Drew {len(bbox_data)} bounding boxes")
 
             # Add summary text if requested
             # if add_summary:

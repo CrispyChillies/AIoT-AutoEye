@@ -12,6 +12,7 @@ from config import (
     MQTT_TOPIC,
     MQTT_CLIENT_ID,
 )
+import queue
 import threading
 
 
@@ -24,15 +25,21 @@ class MQTTHandler:
         self.is_connected = False
 
         self.image_processor = TrafficImageProcessor()
+        self.current_data_mqtt = queue.Queue()
+        self.is_init_val = False
 
         # Set credentials if provided
         if MQTT_USERNAME and MQTT_PASSWORD:
             self.client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
 
+    def is_init(self):
+        return self.is_init_val
+
     def on_connect(self, client, userdata, flags, rc):
         """Callback when MQTT client connects"""
         if rc == 0:
             print(f"✅ MQTT Connected to {MQTT_BROKER}:{MQTT_PORT}")
+            self.is_init_val = True
             self.is_connected = True
             # Subscribe to topic
             client.subscribe(MQTT_TOPIC)
@@ -54,7 +61,7 @@ class MQTTHandler:
             # Parse JSON message
             message = json.loads(msg.payload.decode())
             print(
-                f"🔍 Message from edge device - Frame ID: {message.get('frame_id', 'Unknown')}"
+                f"🔍 Message from edge device - Edge ID: {message.get('edge_id', 'Unknown')}"
             )
 
             # Process the traffic data
@@ -73,27 +80,21 @@ class MQTTHandler:
                 return False
 
             # Extract data from MQTT message
-            frame_id = mqtt_data.get("frame_id", "unknown")
+            edge_id = mqtt_data.get("edge_id", "unknown")
             timestamp = mqtt_data.get("timestamp", datetime.now().isoformat() + "Z")
             location = mqtt_data.get("location", "Edge Device Camera")
             status = mqtt_data.get("status", "unknown")
             image_base64 = mqtt_data.get("image", "")
             bbox_data = mqtt_data.get("bbox", [])
 
-            print(f"📋 Processing frame: {frame_id} from {location}")
+            print(f"📋 Processing edge: {edge_id} from {location}")
             print(f"📦 Found {len(bbox_data)} detected objects")
-
-            # Check for duplicates
-            existing = database.traffic_collection.find_one({"frame_id": frame_id})
-            if existing:
-                print(f"⚠️ Frame {frame_id} already processed, skipping duplicate")
-                return True
 
             # Process image if available
             processed_image_base64 = None
             vehicle_counts = None
 
-            if image_base64 and bbox_data:
+            if image_base64:
                 print("🎨 Processing image with bounding boxes...")
                 processed_image_base64, vehicle_counts = (
                     self.image_processor.process_traffic_image(
@@ -127,8 +128,8 @@ class MQTTHandler:
                 total_vehicles = vehicle_counts.get("total", 0)
             else:
                 # Fallback to manual counting
-                cars_count = len([b for b in bbox_data if b.get("class") == 0])
-                motorbikes_count = len([b for b in bbox_data if b.get("class") == 1])
+                cars_count = len([b for b in bbox_data if b.get("class") == "car"])
+                motorbikes_count = len([b for b in bbox_data if b.get("class") == "motorbike"])
                 lane_in_count = len([b for b in bbox_data if b.get("lane") == "in"])
                 lane_out_count = len([b for b in bbox_data if b.get("lane") == "out"])
                 total_vehicles = len(bbox_data)
@@ -144,7 +145,7 @@ class MQTTHandler:
 
             # unique_suffix = str(uuid.uuid4())[:8]
             traffic_doc = {
-                "_id": f"edge_{frame_id}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}",
+                "_id": f"edge_{edge_id}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}",
                 "timestamp": timestamp,
                 "location": location,
                 "vehicle_count": total_vehicles,
@@ -161,7 +162,7 @@ class MQTTHandler:
                     image_base64 if processed_image_base64 else None
                 ),  # Store original if processed
                 "bbox_data": bbox_data,
-                "frame_id": frame_id,
+                "edge_id": edge_id,
                 "source": "mqtt_edge_device",
             }
 
@@ -169,6 +170,9 @@ class MQTTHandler:
             traffic_doc = {
                 k: v for k, v in traffic_doc.items() if v is not None and v != ""
             }
+            if(self.current_data_mqtt.qsize() >= 10):
+                self.current_data_mqtt.get()
+            self.current_data_mqtt.put(traffic_doc)
 
             # Save to database
             result = database.traffic_collection.insert_one(traffic_doc)
@@ -217,7 +221,7 @@ class MQTTHandler:
         """Publish a test message for debugging"""
         if self.is_connected:
             test_data = {
-                "frame_id": "test_001",
+                "edge_id": "test_001",
                 "timestamp": datetime.now().isoformat() + "Z",
                 "location": "Test Location",
                 "status": "moderate",
@@ -234,4 +238,6 @@ class MQTTHandler:
 
 
 # Global MQTT handler instance
-mqtt_handler = MQTTHandler()
+def init():
+    global mqtt_handler_inst
+    mqtt_handler_inst = MQTTHandler()

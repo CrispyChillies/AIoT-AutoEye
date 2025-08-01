@@ -4,7 +4,7 @@ from database import connect_db
 import database
 from routes import users_bp, traffic_bp
 from config import DEBUG
-from mqtt_handler import mqtt_handler
+import mqtt_handler
 
 # Create Flask app
 app = Flask(__name__)
@@ -15,7 +15,8 @@ connect_db()
 
 
 # Start MQTT client
-mqtt_handler.start()
+mqtt_handler.init()
+mqtt_handler.mqtt_handler_inst.start()
 
 # Register routes
 app.register_blueprint(users_bp)
@@ -40,7 +41,7 @@ def mqtt_status():
     return (
         jsonify(
             {
-                "mqtt_connected": mqtt_handler.is_connected,
+                "mqtt_connected": mqtt_handler.mqtt_handler_inst.is_connected(),
                 "topic": "traffic/data",
                 "broker": f"localhost:1883",
             }
@@ -53,8 +54,8 @@ def mqtt_status():
 def mqtt_test():
     """Publish a test message to MQTT for debugging"""
     try:
-        if mqtt_handler.is_connected:
-            mqtt_handler.publish_test_message()
+        if mqtt_handler.mqtt_handler_inst.is_connected():
+            mqtt_handler.mqtt_handler_inst.publish_test_message()
             return (
                 jsonify(
                     {"message": "Test message sent successfully", "status": "success"}
@@ -81,4 +82,4 @@ if __name__ == "__main__":
         app.run(debug=DEBUG, host="0.0.0.0", port=5000, use_reloader=False)
     except KeyboardInterrupt:
         print("\n🛑 Shutting down...")
-        mqtt_handler.stop()
+        mqtt_handler.mqtt_handler_inst.stop()
