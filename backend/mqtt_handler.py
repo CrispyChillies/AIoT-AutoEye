@@ -25,7 +25,6 @@ class MQTTHandler:
         self.is_connected = False
 
         self.image_processor = TrafficImageProcessor()
-        self.current_data_mqtt = queue.Queue()
         self.is_init_val = False
 
         # Set credentials if provided
@@ -39,6 +38,7 @@ class MQTTHandler:
         """Callback when MQTT client connects"""
         if rc == 0:
             print(f"✅ MQTT Connected to {MQTT_BROKER}:{MQTT_PORT}")
+            self.current_data_mqtt = queue.Queue()
             self.is_init_val = True
             self.is_connected = True
             # Subscribe to topic
@@ -170,9 +170,10 @@ class MQTTHandler:
             traffic_doc = {
                 k: v for k, v in traffic_doc.items() if v is not None and v != ""
             }
-            if(self.current_data_mqtt.qsize() >= 10):
-                self.current_data_mqtt.get()
-            self.current_data_mqtt.put(traffic_doc)
+            if(self.current_data_mqtt != None):
+                if(self.current_data_mqtt.qsize() >= 10):
+                    self.current_data_mqtt.get()
+                self.current_data_mqtt.put(traffic_doc)
 
             # Save to database
             result = database.traffic_collection.insert_one(traffic_doc)
