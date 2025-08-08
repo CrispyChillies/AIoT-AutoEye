@@ -198,14 +198,23 @@ def get_traffic():
             query["status"] = request.args.get("status")
 
         # Get data sorted by latest first
-        if mqtt_handler.mqtt_handler_inst is not None and mqtt_handler.mqtt_handler_inst.is_init() \
-            and mqtt_handler.mqtt_handler_inst.is_connected and mqtt_handler.mqtt_handler_inst.current_data_mqtt is not None:
-            traffic_data = [mqtt_handler.mqtt_handler_inst.current_data_mqtt.queue[i] for i in range(mqtt_handler.mqtt_handler_inst.current_data_mqtt.qsize())]
-        
+        if (
+            mqtt_handler.mqtt_handler_inst is not None
+            and mqtt_handler.mqtt_handler_inst.is_init()
+            and mqtt_handler.mqtt_handler_inst.is_connected
+            and mqtt_handler.mqtt_handler_inst.current_data_mqtt is not None
+        ):
+            traffic_data = [
+                mqtt_handler.mqtt_handler_inst.current_data_mqtt.queue[i]
+                for i in range(mqtt_handler.mqtt_handler_inst.current_data_mqtt.qsize())
+            ]
+            print(traffic_data)
             return jsonify(traffic_data), 200
         else:
             traffic_data = list(
-                database.traffic_collection.find(query).sort("timestamp", pymongo.DESCENDING).limit(10)
+                database.traffic_collection.find(query)
+                .sort("timestamp", pymongo.DESCENDING)
+                .limit(10)
             )
             return jsonify([database.serialize_doc(data) for data in traffic_data]), 200
     except Exception as e:

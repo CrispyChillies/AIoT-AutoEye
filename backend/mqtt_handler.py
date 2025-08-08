@@ -3,7 +3,6 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 from database import serialize_doc
 import database
-from image_processor import TrafficImageProcessor
 from config import (
     MQTT_BROKER,
     MQTT_PORT,
@@ -23,8 +22,6 @@ class MQTTHandler:
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
         self.is_connected = False
-
-        self.image_processor = TrafficImageProcessor()
         self.is_init_val = False
 
         # Set credentials if provided
@@ -33,6 +30,37 @@ class MQTTHandler:
 
     def is_init(self):
         return self.is_init_val
+
+    def count_vehicles(self, bbox_data):
+        """Count vehicles by class and lane"""
+        counts = {
+            "cars_in": 0,
+            "cars_out": 0,
+            "motorbikes_in": 0,
+            "motorbikes_out": 0,
+            "total": len(bbox_data),
+            "cars_total": 0,
+            "motorbikes_total": 0,
+        }
+
+        for bbox in bbox_data:
+            class_id = bbox.get("class", -1)
+            lane = bbox.get("lane", "unknown")
+
+            if class_id == "car":  # Car
+                counts["cars_total"] += 1
+                if lane == "in":
+                    counts["cars_in"] += 1
+                elif lane == "out":
+                    counts["cars_out"] += 1
+            elif class_id == "motorbike":  # Motorbike
+                counts["motorbikes_total"] += 1
+                if lane == "in":
+                    counts["motorbikes_in"] += 1
+                elif lane == "out":
+                    counts["motorbikes_out"] += 1
+
+        return counts
 
     def on_connect(self, client, userdata, flags, rc):
         """Callback when MQTT client connects"""
@@ -90,30 +118,14 @@ class MQTTHandler:
             print(f"📋 Processing edge: {edge_id} from {location}")
             print(f"📦 Found {len(bbox_data)} detected objects")
 
-            # Process image if available
-            processed_image_base64 = None
+            # Count vehicles from bbox data (no image processing)
             vehicle_counts = None
+            if bbox_data:
+                vehicle_counts = self.count_vehicles(bbox_data)
+                print(f"📊 Vehicle counts: {vehicle_counts}")
 
-            if image_base64:
-                print("🎨 Processing image with bounding boxes...")
-                processed_image_base64, vehicle_counts = (
-                    self.image_processor.process_traffic_image(
-                        image_base64,
-                        bbox_data,
-                        location=location,
-                        timestamp=timestamp,
-                        add_summary=True,
-                    )
-                )
-
-                if processed_image_base64:
-                    print("✅ Image processed successfully")
-                else:
-                    print("⚠️ Image processing failed, using original")
-                    processed_image_base64 = image_base64
-            else:
-                # No image or no bboxes, just count from bbox data
-                vehicle_counts = self.image_processor.count_vehicles(bbox_data)
+            # Store raw image without processing (frontend will handle bbox drawing)
+            raw_image_base64 = image_base64
 
             # Extract counts
             if vehicle_counts:
@@ -129,7 +141,9 @@ class MQTTHandler:
             else:
                 # Fallback to manual counting
                 cars_count = len([b for b in bbox_data if b.get("class") == "car"])
-                motorbikes_count = len([b for b in bbox_data if b.get("class") == "motorbike"])
+                motorbikes_count = len(
+                    [b for b in bbox_data if b.get("class") == "motorbike"]
+                )
                 lane_in_count = len([b for b in bbox_data if b.get("lane") == "in"])
                 lane_out_count = len([b for b in bbox_data if b.get("lane") == "out"])
                 total_vehicles = len(bbox_data)
@@ -156,12 +170,8 @@ class MQTTHandler:
                 "lane2_in": 0,
                 "lane2_out": 0,
                 "status": status,
-                "image": processed_image_base64
-                or image_base64,  # Use processed or original
-                "raw_image": (
-                    image_base64 if processed_image_base64 else None
-                ),  # Store original if processed
-                "bbox_data": bbox_data,
+                "image": raw_image_base64,  # Store raw image for frontend processing
+                "bbox_data": bbox_data,  # Store bbox data for frontend drawing
                 "edge_id": edge_id,
                 "source": "mqtt_edge_device",
             }
@@ -170,8 +180,8 @@ class MQTTHandler:
             traffic_doc = {
                 k: v for k, v in traffic_doc.items() if v is not None and v != ""
             }
-            if(self.current_data_mqtt != None):
-                if(self.current_data_mqtt.qsize() >= 10):
+            if self.current_data_mqtt != None:
+                if self.current_data_mqtt.qsize() >= 10:
                     self.current_data_mqtt.get()
                 self.current_data_mqtt.put(traffic_doc)
 
@@ -186,7 +196,7 @@ class MQTTHandler:
                 f"🚦 Status: {status}, Lane In={lane_in_count}, Lane Out={lane_out_count}"
             )
             print(
-                f"📸 Image: {'Processed' if processed_image_base64 and image_base64 else 'Original' if image_base64 else 'No'}"
+                f"📸 Image: {'Available' if image_base64 else 'No'} | BBox data: {len(bbox_data)} objects"
             )
             print("─" * 50)
 
