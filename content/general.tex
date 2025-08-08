@@ -1,0 +1,251 @@
+
+
+\section{Định hướng}
+\subsection{Đặt vấn đề}
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|p{4cm}|p{10cm}|}
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    Vấn đề & Thiếu các giải pháp giám sát giao thông theo thời gian thực, tự động và có chi phí phải chăng dành cho các đoạn đường có lưu lượng cao. \\
+    \hline
+    Tác động lên & Tối ưu hóa chu kỳ đèn giao thông và ngăn ngừa tình trạng ùn tắc; hỗ trợ quy hoạch hạ tầng giao thông dài hạn. \\
+    \hline
+    Ảnh hưởng của vấn đề & Hạn chế việc sử dụng luồng dữ liệu giao thông liên tục; giảm tải các tác vụ tính toán không cần thiết cho máy chủ trung tâm. \\
+    \hline
+    Giải pháp sẽ là & Cung cấp một hạ tầng edge có chi phí thấp, đáng tin cậy, dễ mở rộng và dễ bảo trì, có khả năng cung cấp các cập nhật giao thông quan trọng chỉ khi cần thiết. \\
+    \hline
+    \end{tabular}
+    \caption{Tổng quan vấn đề và giải pháp trong giám sát giao thông}
+    \label{tab:traffic_solution}
+\end{table}
+
+\subsection{Vị trí của sản phẩm}
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|p{4cm}|p{10cm}|}
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    Dành cho & Chính quyền thành phố, cơ quan quản lý giao thông và các nhà phát triển hạ tầng thông minh. \\
+    \hline
+    Ai & Cần một hệ thống phân loại trạng thái giao thông và đếm phương tiện theo thời gian thực, có khả năng mở rộng và chi phí hợp lý. \\
+    \hline
+    Tên sản phẩm & \textbf{AutoEye}: Hệ thống IoT Hỗ Trợ Đếm Và Giám Sát Lưu Lượng Xe Lưu Thông Trên Đường. \\
+    \hline
+    Sử dụng & Sử dụng các mô hình AI (triển khai trên thiết bị biên hoặc máy chủ) để phát hiện và đếm phương tiện với độ trễ tối thiểu. \\
+    \hline
+    Không giống & Hệ thống truyền thống: Dựa trên camera giám sát (CCTV) kết hợp xử lý tập trung, đòi hỏi hạ tầng tốn kém. \\
+    \hline
+    Sản phẩm của chúng tôi & \textbf{AutoEye} sử dụng vi điều khiển chi phí thấp và suy luận AI tại thiết bị edge computing để xử lý video giao thông tại nguồn, giúp giảm băng thông và chi phí. \\
+    \hline
+    \end{tabular}
+    \caption{Giới thiệu sản phẩm AutoEye và sự khác biệt}
+    \label{tab:autoeye_overview}
+\end{table}
+
+\section{Mục Đích của sản phẩm}
+\begin{itemize}
+    \item \textbf{Giám sát giao thông:} Cho phép báo cáo tình trạng lưu thông của phương tiện theo thời gian thực, phục vụ cho việc điều tiết giao thông (cả tự động và thủ công) và quản lý ùn tắc mà không cần phụ thuộc vào dịch vụ của các bên thứ ba.
+    
+    \item \textbf{Phát triển thành phố thông minh:} Thực hiện số hóa và thông minh hóa các hạ tầng thị giác hiện tại của thành phố (camera). Dự án đồng thời xây dựng một “bản thảo tương tác” (interface) nhằm giúp các dịch vụ nội bộ của hệ thống quản lý thành phố kết nối hiệu quả hơn với hạ tầng của các điểm gắn camera.
+
+    \item \textbf{Cung cấp dữ liệu giao thông:} Cung cấp dữ liệu giao thông ở cấp độ thứ cấp để phục vụ cho các tác vụ yêu cầu dữ liệu lớn trong tương lai, đặc biệt trong bối cảnh phát triển mạnh mẽ của các phương pháp học máy yêu cầu dữ liệu lớn.
+\end{itemize}
+
+\quad Sau cùng, hệ thống nhắm đến một mục đích lớn hơn là từng bước hiện đại hóa, thông minh hóa các hạ tầng giao thông của đô thị; trong đó, sự “thông minh” chỉ đến khả năng thích ứng linh động của hạ tầng về mặt cài đặt (như thời gian đèn tín hiệu giao thông, thông báo phân loại ùn tắc giao thông, …) nhằm giúp ích, giảm thiểu 
+
+\section{Mục tiêu của sản phẩm}
+\subsection*{Mục Tiêu 1: Xây dựng hệ thống nhận diện và đếm phương tiện có thể hoạt động ổn định trong điều kiện thực tế}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|p{4cm}|p{10cm}|}
+    \hline
+    \textbf{Các tiêu chí} & \textbf{Mô tả} \\
+    \hline
+    \textbf{Specific} & Mục tiêu ở đây là sẽ xây dựng được hệ thống nhận diện và đếm phương tiện. \\
+    \hline
+    \textbf{Measurable} & Độ chính xác mong muốn trên 90\%, nhận diện được các loại xe và đếm các loại phương tiện một cách chính xác. \\
+    \hline
+    \textbf{Achievable} & Mục tiêu có thể đạt được nếu nhóm sử dụng công nghệ phù hợp và có đủ thời gian \& tài nguyên. \\
+    \hline
+    \textbf{Relevant} & Với các thiết bị chi phí thấp và những nghiên cứu liên quan hỗ trợ, đồ án có tính khả thi (thực hiện được). \\
+    \hline
+    \textbf{Time Bound} & Đã đặt deadline cho mục tiêu trong timeline. \\
+    \hline
+    \end{tabular}
+    \caption{Bảng tiêu chí SMART cho dự án}
+\end{table}
+\pagebreak
+\subsection*{Mục Tiêu 2: Thiết kế và xây dựng được hệ thống có tích hợp cả cơ sở dữ liệu, giao diện người dùng để bên phía người dùng cuối có thể sử dụng để quan sát được tình trạng giao thông}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|p{4cm}|p{10cm}|}
+    \hline
+    \textbf{Các tiêu chí} & \textbf{Mô tả} \\
+    \hline
+    \textbf{Specific} & Phát triển phần mềm trên máy chủ để hỗ trợ tương tác với người dùng và cơ sở dữ liệu. \\
+    \hline
+    \textbf{Measurable} & Đảm bảo cập nhật tình trạng giao thông thời gian thực, không quá 30 giây so với tình trạng giao thông ngoài thực tế. \\
+    \hline
+    \textbf{Achievable} & Kế hoạch được hoạch định và chia nhỏ cho các thành viên. \\
+    \hline
+    \textbf{Relevant} & Quy mô của kiến trúc hệ thống vừa phải, sử dụng công nghệ mở, nên mục tiêu khả thi. \\
+    \hline
+    \textbf{Time Bound} & Đã đặt deadline cho mục tiêu trong timeline. \\
+    \hline
+    \end{tabular}
+    \caption{Bảng tiêu chí SMART cho phần mềm máy chủ}
+\end{table}
+
+\subsection*{Mục tiêu 3: Có thể triển khai mô hình AI trên thiết bị phần cứng với dung lượng và tài nguyên hạn chế, cụ thể là ESP32-CAM.}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|p{4cm}|p{10cm}|}
+    \hline
+    \textbf{Các tiêu chí} & \textbf{Mô tả} \\
+    \hline
+    \textbf{Specific} & Triển khai giải pháp phần mềm trên các phần cứng IoT. \\
+    \hline
+    \textbf{Measurable} & 
+    \begin{itemize}
+      \item Độ chính xác \>= 70\%–80\% (vì triển khai trên phần cứng IoT)
+      \item Thành công \>= 85\% số khung hình trong điều kiện ánh sáng ban ngày
+      \item Triển khai được mô hình trên thiết bị có bộ nhớ flash < 16MB
+    \end{itemize}
+    \\
+    \hline
+    \textbf{Achievable} & Kế hoạch cần chi tiết và phù hợp với các thành viên trong nhóm. \\
+    \hline
+    \textbf{Relevant} & Phần cứng không quá phức tạp, có sự hỗ trợ của các thư viện nạp mã nguồn nên mục tiêu khả thi. \\
+    \hline
+    \textbf{Time Bound} & Đã đặt deadline cho mục tiêu trong timeline. \\
+    \hline
+    \end{tabular}
+    \caption{Bảng tiêu chí SMART cho phần mềm trên thiết bị IoT}
+\end{table}
+
+\section{Mô tả người dùng và các bên liên quan}
+
+\subsection{Tổng quan về các bên liên quan}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|p{4cm}|p{6cm}|p{6cm}|}
+    \hline
+    \textbf{Tên} & \textbf{Mô tả} & \textbf{Trách nhiệm} \\
+    \hline
+    \textbf{Người tham gia giao thông} & 
+    Sử dụng hệ thống qua giao diện người dùng & 
+    Cung cấp nhận xét về những tính năng bị lỗi, hoặc những tính năng chưa đáp ứng được yêu cầu. \\
+    \hline
+    \textbf{Ph.D Võ Hoài Việt} & 
+    Giám sát dự án & 
+    Đánh giá và nhận xét về những yêu cầu của dự án. Giám sát và hỗ trợ trong quá trình phát triển dự án và đảm bảo hoàn thành tiến độ. \\
+    \hline
+    \textbf{Đội ngũ phát triển} & 
+    Thiết kế kiến trúc hệ thống, thiết kế giải pháp phần mềm dựa vào những yêu cầu sẵn có & 
+    Xây dựng, vận hành và giám sát hệ thống IoT và hệ thống phần mềm. \\
+    \hline
+    \end{tabular}
+    \caption{Bảng mô tả vai trò và trách nhiệm của các bên liên quan}
+\end{table}
+
+\subsection{Tổng quan về người dùng}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|p{4cm}|p{6cm}|p{6cm}|}
+    \hline
+    \textbf{Tên} & \textbf{Mô tả} & \textbf{Trách nhiệm} \\
+    \hline
+    \textbf{Người tham gia giao thông} & 
+    Sử dụng hệ thống qua giao diện người dùng & 
+    Cung cấp nhận xét về những tính năng bị lỗi, hoặc những tính năng chưa đáp ứng được yêu cầu. \\
+    \hline
+    \textbf{Ph.D Võ Hoài Việt} & 
+    Giám sát dự án & 
+    Đánh giá và nhận xét về những yêu cầu của dự án. Giám sát và hỗ trợ trong quá trình phát triển dự án và đảm bảo hoàn thành tiến độ. \\
+    \hline
+    \textbf{Đội ngũ phát triển} & 
+    Thiết kế kiến trúc hệ thống, thiết kế giải pháp phần mềm dựa vào những yêu cầu sẵn có & 
+    Xây dựng, vận hành và giám sát hệ thống IoT và hệ thống phần mềm. \\
+    \hline
+    \end{tabular}
+    \caption{Bảng mô tả vai trò và trách nhiệm của các bên liên quan}
+\end{table}
+
+\subsection{Môi trường sử dụng sản phẩm}
+\subsubsection*{Thiết bị và Truy cập:}
+
+\begin{itemize}
+
+
+    \item \textbf{Thiết bị sử dụng:}
+    \begin{itemize}
+        \item Module ESP32-CAM được lắp đặt tại hiện trường để ghi lại hình ảnh giao thông và thực hiện các tác vụ theo dõi, phân loại phương tiện.
+        \item Máy chủ cục bộ hoặc đám mây dùng để xử lý và lưu trữ dữ liệu.
+        \item Giao diện bảng điều khiển (Dashboard): có thể truy cập thông qua trình duyệt trên máy tính xách tay, máy tính bảng hoặc máy tính để bàn.
+    \end{itemize}
+
+
+    \item \textbf{Kết nối Internet:}
+    \begin{itemize}
+        \item Các thiết bị kết nối qua Wifi để truyền hình ảnh hoặc kết quả suy luận.
+        \item Hệ thống cần được tối ưu hóa để hoạt động hiệu quả trong điều kiện mạng chập chờn hoặc băng thông thấp.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{Nền tảng hệ thống:}
+
+\begin{itemize}
+    \item \textbf{Các nền tảng hiện tại:}
+    \begin{itemize}
+        \item Firmware được phát triển bằng TinyEngine phiên bản 2.0 cho ESP32-CAM.
+        \item Máy chủ sử dụng giao thức MQTT để giao tiếp.
+        \item Cơ sở dữ liệu sử dụng MongoDB.
+        \item Máy chủ tương tác người dùng - hệ thống sử dụng React.js cho giao diện người dùng và FastAPI cho các tác vụ xử lý yêu cầu người dùng.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Tổng quan các nhu cầu chính của bên liên quan hoặc người dùng}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|p{4cm}|p{2cm}|p{3.5cm}|p{3.5cm}|p{3.5cm}|}
+    \hline
+    \textbf{Nhu cầu} & \textbf{Ưu tiên} & \textbf{Vấn đề} & \textbf{Giải pháp hiện tại} & \textbf{Giải pháp đề xuất} \\
+    \hline
+    Đếm phương tiện theo thời gian thực & High & Thiết bị nhỏ (Tiny device) có khả năng tính toán hạn chế. & Tính toán thông qua điện toán đám mây (over-the-cloud). & Theo dõi phương tiện hiệu quả bằng CNN trên các thiết bị edge. \\
+    \hline
+    Phân loại tình trạng giao thông & High & Thiết bị nhỏ có khả năng xử lý hạn chế. & Kết nối tới các dịch vụ trung tâm như Google Maps để đếm lưu lượng tại các điểm. & Kiến trúc phân loại hiệu quả sử dụng các đặc trưng trích xuất từ CNN. \\
+    \hline
+    Giao diện người dùng & Medium & Kết nối Internet có thể không ổn định. Khả năng tích hợp vào thiết bị edge có thể không khả thi. & Mô-đun mạng chung được sử dụng bởi tất cả các thiết bị hỗ trợ Arduino. & Mô-đun mạng nhẹ do nhà cung cấp ESP phát triển. \\
+    \hline
+    Khả năng mở rộng hệ thống & Medium & Máy chủ tính toán trung tâm trở thành điểm nghẽn. & Hệ thống phụ thuộc vào tính toán đám mây tập trung. & Thực hiện tính toán trực tiếp trên thiết bị (on-device computation). \\
+    \hline
+    \end{tabular}
+    \caption{Phân tích nhu cầu và giải pháp cho hệ thống giám sát giao thông}
+\end{table}
+\pagebreak
+\subsection{Các lựa chọn thay thế và đối thủ cạnh tranh}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|p{5cm}|p{4.5cm}|p{4.5cm}|}
+    \hline
+    \textbf{Hệ Thống} & \textbf{Điểm mạnh} & \textbf{Điểm yếu} \\
+    \hline
+    Camera giám sát truyền thống + AI trên đám mây & Độ chính xác cao & Chi phí cao, yêu cầu băng thông lớn \\
+    \hline
+    Đếm thủ công & Chi phí thấp & Tốn nhân lực, không thể mở rộng quy mô \\
+    \hline
+    Các nhà cung cấp đèn giao thông thông minh (ví dụ: Hikvision AI Cam) & Hệ thống đạt chuẩn thương mại & Rất đắt đỏ, phụ thuộc vào nhà cung cấp (vendor lock-in) \\
+    \hline
+    \end{tabular}
+    \caption{So sánh các giải pháp giám sát giao thông hiện tại}
+\end{table}
+
