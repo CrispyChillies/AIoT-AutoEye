@@ -28,6 +28,20 @@
 \quad Mục \nameref{product_overview} sẽ trình bày khái quát về ứng dụng dịch vụ và mối quan hệ với các dịch vụ bên thứ ba, cũng như các giả định về sự phụ thuộc trong kiến trúc hệ thống. Mục \nameref{sec:product_features} sẽ mô tả chi tiết hơn về các tính năng cốt lõi được kỳ vọng trong phiên bản triển khai thực tế của dịch vụ.
 Cuối cùng, Mục \nameref{feature_request} sẽ xác định những yêu cầu về mặt vận hành của dịch vụ, các ràng buộc về thời gian hoạt động (uptime), cũng như hạ tầng vận hành được khuyến nghị cho người dùng và các yêu cầu dành cho người dùng cuối.
 
+\subsection{Những thay đổi so với phiên bản gần nhất}
+\begin{table}[H]
+    \centering
+    \caption{So sánh phiên bản cũ và phiên bản hiện tại}
+    \begin{tabular}{|p{8cm}|p{4cm}|p{4cm}|}
+    \hline
+    \textbf{Mục} & \textbf{Phiên bản cũ} & \textbf{Phiên bản hiện tại} \\ \hline
+    Mục tiêu 1: Chi tiết hoá Measurable (Đo lường được) & Không có F1 & Ghi rõ số liệu của Precision và F1 \\ \hline
+    Mục tiêu 2: Thay đổi mục Specific & Người dùng có thể tương tác & Người dùng chỉ có thể quan sát \\ \hline
+    Mục tiêu 3: Giảm độ chính xác ghi rõ là F1 &  Độ chính xác >= 70\%–80\%  & Độ chính xác (F1) >= 60\%  \\ \hline
+    Thay đổi sơ đồ kiến trúc hệ thống (theo yêu cầu của thầy, vì ảnh trước các edges hơi nhỏ) & Sơ đồ có nhiều edge & Sơ đồ có 1 edge duy nhất \\ \hline
+    Quy trình CICD & Không có & Thêm ảnh và mô tả về quá trình CICD \\ \hline
+    \end{tabular}
+\end{table}
 
 
 
